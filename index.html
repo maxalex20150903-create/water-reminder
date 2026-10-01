@@ -52,24 +52,75 @@ body{min-height:100vh;display:flex;justify-content:center}
 .history li{align-items:center;gap:8px}
 .history .recordMain{display:flex;justify-content:space-between;align-items:center;gap:10px;flex:1}
 
+
+.tabs{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+  background:rgba(255,255,255,.76);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.92);
+  padding:5px;border-radius:18px;box-shadow:0 7px 20px rgba(39,103,137,.07);
+  position:sticky;top:8px;z-index:40;margin:4px 0 14px
+}
+.tab{border:0;border-radius:14px;padding:11px 8px;background:transparent;color:#6f8797;font-size:14px;font-weight:850}
+.tab.active{background:#fff;color:#258ecb;box-shadow:0 4px 12px rgba(47,132,180,.10)}
+.page{display:none}.page.active{display:block}
+.prefGroupTitle{font-size:12px;font-weight:900;color:#8296a5;margin:3px 4px 8px;text-transform:uppercase;letter-spacing:.6px}
+.install.hidden{display:none}
+
 </style>
 </head>
 <body>
 <main class="app">
-  <header class="top">
+<header class="top">
     <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2C9.2 6.2 5.5 9.8 5.5 14.1A6.5 6.5 0 0 0 18.5 14C18.5 9.8 14.8 6.2 12 2Z" fill="currentColor"/><path d="M9 15.2c.5 1.5 1.6 2.3 3.2 2.5" stroke="#dff6ff" stroke-width="1.5" stroke-linecap="round"/></svg></div><div><h1>喝水提醒</h1><small>Hydration Buddy</small></div></div>
     <div class="now"><div class="time" id="clock">--:--</div><div class="date" id="date">----</div></div>
   </header>
+<nav class="tabs">
+  <button class="tab active" data-page="recordPage">記錄</button>
+  <button class="tab" data-page="prefsPage">首選項</button>
+</nav>
 
-  <section class="hero">
+<section class="page active" id="recordPage">
+<section class="hero">
     <div class="progressHead"><b>今日進度</b><span id="progressLabel">0%</span></div>
     <div class="ringWrap">
       <div class="ring" id="ring"><div class="mascot"><div class="face"><div class="dropShape"></div><div class="eyes"><i></i><i></i></div><div class="mouth"></div></div><div class="pct" id="pct">0%</div></div></div>
       <div class="stats"><div><span class="big" id="total">0</span><span class="unit">ml</span></div><div class="goal">今日目標 <b id="goalText">2000</b> ml</div><div class="encourage" id="encourage">💧 今天也要記得補充水分喔！</div></div>
     </div>
   </section>
+<section class="card">
+    <h2>記錄喝水 <span class="sub">選擇這次喝多少</span></h2>
+    <div class="amounts" id="amounts">
+      <button class="amount" data-ml="100">100</button><button class="amount active" data-ml="200">200</button><button class="amount" data-ml="300">300</button><button class="amount" data-ml="500">500</button>
+    </div>
+    <div class="otherRow"><input class="input" id="otherMl" type="number" min="1" max="3000" inputmode="numeric" placeholder="其他水量（ml）"><button class="ghost" id="useOther">使用</button></div>
+    <button class="primary" id="drinkBtn">＋ 記錄 200 ml</button>
+  </section>
+<section class="card">
+    <h2>今日紀錄</h2><ul class="history" id="history"><li><span>今天還沒有紀錄</span><span>💧</span></li></ul>
+  </section>
+</section>
 
-  <section class="card">
+<section class="page" id="prefsPage">
+  <div class="prefGroupTitle">提醒設定</div>
+<section class="card">
+    <div class="statusRow"><h2 style="margin:0">提醒</h2><span class="statusPill"><span class="dot" id="notifyDot"></span><span id="notifyText">尚未開啟通知</span></span></div>
+    <div class="timer" id="timer">01:00:00</div><div class="centerNote" id="timerNote">記錄喝水後開始倒數</div>
+    <div class="setting"><div><label>提醒間隔</label><div class="hint">多久沒喝水要提醒</div></div><select class="select" id="interval" style="width:130px"><option value="15">15 分鐘</option><option value="30">30 分鐘</option><option value="45">45 分鐘</option><option value="60" selected>1 小時</option><option value="90">1.5 小時</option><option value="120">2 小時</option><option value="custom">自訂</option></select></div>
+    <div class="otherRow" id="customIntervalRow" style="display:none"><input class="input" id="customInterval" type="number" min="1" max="720" inputmode="numeric" placeholder="自訂提醒分鐘數"><button class="ghost" id="useCustomInterval">套用</button></div>
+    <div class="setting"><div><label>提醒通知</label><div class="hint">顯示手機系統通知</div></div><button class="ghost" id="enableNotify">開啟</button></div>
+    <button class="ghost" id="disableNotify" style="display:none;width:100%;margin-top:8px">關閉提醒</button>
+    <div class="setting"><div><label>叮咚聲</label><div class="hint">使用真實 10 秒門鈴錄音</div></div><button class="ghost" id="testSound">試聽</button></div>
+  </section>
+  <div class="prefGroupTitle">睡眠</div>
+<section class="card">
+    <h2>🌙 睡眠模式</h2>
+    <div class="setting"><div><label>立即開啟睡眠模式</label><div class="hint">開啟後暫停所有喝水提醒</div></div><label class="switch"><input id="sleepNow" type="checkbox"><span class="slider"></span></label></div>
+    <div class="setting"><div><label>自動睡眠時段</label><div class="hint">每天依時間自動暫停提醒</div></div><label class="switch"><input id="sleepSchedule" type="checkbox" checked><span class="slider"></span></label></div>
+    <div class="sleepTimes"><div class="timeBox"><small>睡覺時間</small><input id="sleepStart" type="time" value="23:00"></div><div class="timeBox"><small>起床時間</small><input id="wakeTime" type="time" value="07:00"></div></div>
+    <div class="centerNote" id="sleepState" style="margin-top:10px">目前：提醒正常</div>
+  </section>
+  <div class="prefGroupTitle">每日目標</div>
+<section class="card">
     <h2>🎯 每日喝水目標</h2>
     <div class="setting">
       <div>
@@ -89,42 +140,11 @@ body{min-height:100vh;display:flex;justify-content:center}
     </div>
     <button class="primary" id="saveGoal">儲存目標</button>
   </section>
-
-  <section class="card">
-    <h2>記錄喝水 <span class="sub">選擇這次喝多少</span></h2>
-    <div class="amounts" id="amounts">
-      <button class="amount" data-ml="100">100</button><button class="amount active" data-ml="200">200</button><button class="amount" data-ml="300">300</button><button class="amount" data-ml="500">500</button>
-    </div>
-    <div class="otherRow"><input class="input" id="otherMl" type="number" min="1" max="3000" inputmode="numeric" placeholder="其他水量（ml）"><button class="ghost" id="useOther">使用</button></div>
-    <button class="primary" id="drinkBtn">＋ 記錄 200 ml</button>
-  </section>
-
-  <section class="card">
-    <div class="statusRow"><h2 style="margin:0">提醒</h2><span class="statusPill"><span class="dot" id="notifyDot"></span><span id="notifyText">尚未開啟通知</span></span></div>
-    <div class="timer" id="timer">01:00:00</div><div class="centerNote" id="timerNote">記錄喝水後開始倒數</div>
-    <div class="setting"><div><label>提醒間隔</label><div class="hint">多久沒喝水要提醒</div></div><select class="select" id="interval" style="width:130px"><option value="15">15 分鐘</option><option value="30">30 分鐘</option><option value="45">45 分鐘</option><option value="60" selected>1 小時</option><option value="90">1.5 小時</option><option value="120">2 小時</option><option value="custom">自訂</option></select></div>
-    <div class="otherRow" id="customIntervalRow" style="display:none"><input class="input" id="customInterval" type="number" min="1" max="720" inputmode="numeric" placeholder="自訂提醒分鐘數"><button class="ghost" id="useCustomInterval">套用</button></div>
-    <div class="setting"><div><label>提醒通知</label><div class="hint">顯示手機系統通知</div></div><button class="ghost" id="enableNotify">開啟</button></div>
-    <button class="ghost" id="disableNotify" style="display:none;width:100%;margin-top:8px">關閉提醒</button>
-    <div class="setting"><div><label>叮咚聲</label><div class="hint">使用真實 10 秒門鈴錄音</div></div><button class="ghost" id="testSound">試聽</button></div>
-  </section>
-
-  <section class="card">
-    <h2>🌙 睡眠模式</h2>
-    <div class="setting"><div><label>立即開啟睡眠模式</label><div class="hint">開啟後暫停所有喝水提醒</div></div><label class="switch"><input id="sleepNow" type="checkbox"><span class="slider"></span></label></div>
-    <div class="setting"><div><label>自動睡眠時段</label><div class="hint">每天依時間自動暫停提醒</div></div><label class="switch"><input id="sleepSchedule" type="checkbox" checked><span class="slider"></span></label></div>
-    <div class="sleepTimes"><div class="timeBox"><small>睡覺時間</small><input id="sleepStart" type="time" value="23:00"></div><div class="timeBox"><small>起床時間</small><input id="wakeTime" type="time" value="07:00"></div></div>
-    <div class="centerNote" id="sleepState" style="margin-top:10px">目前：提醒正常</div>
-  </section>
-
-  <section class="card">
-    <h2>今日紀錄</h2><ul class="history" id="history"><li><span>今天還沒有紀錄</span><span>💧</span></li></ul>
-  </section>
-
-  <section class="card install">
+<section class="card install">
     <h2>📱 安裝到手機</h2><div class="sub">安裝後會像一般 App 一樣從主畫面開啟。</div><button class="primary" id="installBtn">下載此應用程式</button><div class="fine" id="installHint"></div>
   </section>
-  <div class="fine">提示：iPhone 要「加入主畫面」後，才支援 Web Push 通知權限。</div>
+<div class="fine">提示：iPhone 要「加入主畫面」後，才支援 Web Push 通知權限。</div>
+</section>
 </main>
 
 <div class="achievementOverlay" id="achievementOverlay" role="dialog" aria-modal="true">
@@ -141,9 +161,11 @@ body{min-height:100vh;display:flex;justify-content:center}
 <div class="toast" id="toast"></div>
 <script>
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
-const KEY='water-mobile-v5';
+const KEY='water-mobile-v7';
+const OLD_KEY='water-mobile-v5';
 const defaults={goal:2000,records:[],selectedMl:200,interval:60,nextAt:null,notificationsEnabled:false,sleepNow:false,sleepSchedule:true,sleepStart:'23:00',wakeTime:'07:00',shownMilestones:[]};
-let state={...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}; if(!state.goal) state.goal=2000; if(!Array.isArray(state.shownMilestones)) state.shownMilestones=[];
+let saved=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY)||'{}');
+let state={...defaults,...saved}; if(!state.goal) state.goal=2000; if(!Array.isArray(state.shownMilestones)) state.shownMilestones=[];
 let deferredPrompt=null,lastSleep=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2300)}
@@ -294,6 +316,26 @@ $('#sleepSchedule').onchange=e=>{state.sleepSchedule=e.target.checked;save();ren
 $('#sleepStart').onchange=e=>{state.sleepStart=e.target.value;save();render()};$('#wakeTime').onchange=e=>{state.wakeTime=e.target.value;save();render()};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;});
 $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;return}const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);$('#installHint').textContent=ios?'iPhone：點 Safari 的「分享」→「加入主畫面」。':'如果沒有跳出安裝視窗，請用瀏覽器選單中的「安裝應用程式／加入主畫面」。';toast($('#installHint').textContent)};
+
+// Top navigation: Record / Preferences
+$$('.tab').forEach(tab=>tab.onclick=()=>{
+  $$('.tab').forEach(t=>t.classList.remove('active'));
+  $$('.page').forEach(pg=>pg.classList.remove('active'));
+  tab.classList.add('active');
+  const page=document.getElementById(tab.dataset.page);
+  if(page) page.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+// Hide installation card after the web app has already been installed / opened standalone.
+function updateInstallVisibility(){
+  const standalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+  const card=document.querySelector('.install');
+  if(card) card.classList.toggle('hidden',standalone);
+}
+updateInstallVisibility();
+window.matchMedia('(display-mode: standalone)').addEventListener?.('change',updateInstallVisibility);
+
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(console.warn);
 clock();render();setInterval(()=>{clock();const sl=isSleeping();if(lastSleep&&!sl)resetNext();lastSleep=sl;updateTimer();},1000);
 </script>
