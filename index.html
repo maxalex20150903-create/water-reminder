@@ -63,8 +63,10 @@ body{min-height:100vh;display:flex;justify-content:center}
   <section class="card">
     <div class="statusRow"><h2 style="margin:0">提醒</h2><span class="statusPill"><span class="dot" id="notifyDot"></span><span id="notifyText">尚未開啟通知</span></span></div>
     <div class="timer" id="timer">01:00:00</div><div class="centerNote" id="timerNote">記錄喝水後開始倒數</div>
-    <div class="setting"><div><label>提醒間隔</label><div class="hint">多久沒喝水要提醒</div></div><select class="select" id="interval" style="width:130px"><option value="15">15 分鐘</option><option value="30">30 分鐘</option><option value="45">45 分鐘</option><option value="60" selected>1 小時</option><option value="90">1.5 小時</option><option value="120">2 小時</option></select></div>
+    <div class="setting"><div><label>提醒間隔</label><div class="hint">多久沒喝水要提醒</div></div><select class="select" id="interval" style="width:130px"><option value="15">15 分鐘</option><option value="30">30 分鐘</option><option value="45">45 分鐘</option><option value="60" selected>1 小時</option><option value="90">1.5 小時</option><option value="120">2 小時</option><option value="custom">自訂</option></select></div>
+    <div class="otherRow" id="customIntervalRow" style="display:none"><input class="input" id="customInterval" type="number" min="1" max="720" inputmode="numeric" placeholder="自訂提醒分鐘數"><button class="ghost" id="useCustomInterval">套用</button></div>
     <div class="setting"><div><label>提醒通知</label><div class="hint">顯示手機系統通知</div></div><button class="ghost" id="enableNotify">開啟</button></div>
+    <button class="ghost" id="disableNotify" style="display:none;width:100%;margin-top:8px">關閉提醒</button>
     <div class="setting"><div><label>叮咚聲</label><div class="hint">使用真實 10 秒門鈴錄音</div></div><button class="ghost" id="testSound">試聽</button></div>
   </section>
 
@@ -90,7 +92,7 @@ body{min-height:100vh;display:flex;justify-content:center}
 <script>
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const KEY='water-mobile-v5';
-const defaults={goal:2000,records:[],selectedMl:200,interval:60,nextAt:null,sleepNow:false,sleepSchedule:true,sleepStart:'23:00',wakeTime:'07:00'};
+const defaults={goal:2000,records:[],selectedMl:200,interval:60,nextAt:null,notificationsEnabled:false,sleepNow:false,sleepSchedule:true,sleepStart:'23:00',wakeTime:'07:00'};
 let state={...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')};
 let deferredPrompt=null,lastSleep=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
@@ -102,6 +104,12 @@ function isScheduledSleep(){if(!state.sleepSchedule)return false;const n=new Dat
 function isSleeping(){return state.sleepNow||isScheduledSleep()}
 function encouragement(p){if(p>=100)return '🎉 今日目標完成！做得很好，接下來照身體需求補充即可。';if(p>=80)return '😄 快完成了！今天只差一點點。';if(p>=50)return '😊 已經超過一半，保持這個節奏。';if(p>=25)return '🙂 很好的開始，記得稍後再補充水分。';return '💧 今天也要記得補充水分喔！'}
 function render(){
+ const presets=[15,30,45,60,90,120];
+ if($('#interval')){
+   $('#interval').value=presets.includes(Number(state.interval))?String(state.interval):'custom';
+   $('#customIntervalRow').style.display=presets.includes(Number(state.interval))?'none':'flex';
+   if(!presets.includes(Number(state.interval))) $('#customInterval').value=state.interval;
+ }
  const t=total(),p=Math.min(100,Math.round((t/state.goal)*100)||0),deg=p*3.6;
  $('#total').textContent=t;$('#goalText').textContent=state.goal;$('#pct').textContent=p+'%';$('#progressLabel').textContent=p+'%';$('#ring').style.background=`conic-gradient(var(--blue) ${deg}deg,#dff1fb ${deg}deg)`;$('#encourage').textContent=encouragement(p);
  $$('.amount').forEach(b=>b.classList.toggle('active',Number(b.dataset.ml)===state.selectedMl));$('#drinkBtn').textContent=`＋ 記錄 ${state.selectedMl} ml`;
@@ -116,20 +124,59 @@ async function notify(title,body){
  try{if('serviceWorker'in navigator){const reg=await navigator.serviceWorker.ready;await reg.showNotification(title,{body,icon:'icon-192.png',badge:'icon-192.png',tag:'water-reminder',renotify:true});}else if(Notification.permission==='granted'){new Notification(title,{body});}}catch(e){console.warn(e)}
 }
 function playDing(){const a=$('#dingdong');a.currentTime=0;const p=a.play();if(p&&p.catch)p.catch(()=>toast('請先點一下畫面，再試聽聲音'))}
-function remind(){if(isSleeping())return;playDing();notify('💧 喝水時間到','已經一段時間沒有記錄喝水，記得補充水分。');state.nextAt=Date.now()+state.interval*60000;save();}
+function remind(){if(isSleeping()||!state.notificationsEnabled)return;playDing();notify('💧 喝水時間到','已經一段時間沒有記錄喝水，記得補充水分。');state.nextAt=Date.now()+state.interval*60000;save();}
 function updateTimer(){
  if(isSleeping()){ $('#timer').textContent='暫停中';$('#timerNote').textContent='睡眠模式已開啟'; return; }
- if(!state.nextAt){$('#timer').textContent=String(Math.floor(state.interval/60)).padStart(2,'0')+':00:00';$('#timerNote').textContent='記錄喝水後開始倒數';return}
+ if(!state.nextAt){const totalSec=state.interval*60,h=Math.floor(totalSec/3600),m=Math.floor((totalSec%3600)/60);$('#timer').textContent=[h,m,0].map(x=>String(x).padStart(2,'0')).join(':');$('#timerNote').textContent='記錄喝水後開始倒數';return}
  let left=state.nextAt-Date.now();if(left<=0){remind();left=state.interval*60000}
  const s=Math.max(0,Math.floor(left/1000)),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;$('#timer').textContent=[h,m,sec].map(x=>String(x).padStart(2,'0')).join(':');$('#timerNote').textContent='距離下次提醒';
 }
-function updateNotifyUI(){const ok=('Notification'in window)&&Notification.permission==='granted';$('#notifyDot').classList.toggle('on',ok);$('#notifyText').textContent=ok?'通知已開啟':'尚未開啟通知';$('#enableNotify').textContent=ok?'測試通知':'開啟'}
-async function enableNotifications(){if(!('Notification'in window)){toast('這個瀏覽器不支援系統通知');return}if(Notification.permission!=='granted'){const p=await Notification.requestPermission();if(p!=='granted'){toast('沒有取得通知權限');updateNotifyUI();return}}updateNotifyUI();await notify('喝水提醒已開啟','之後喝水時間到時會用系統通知提醒你。');}
+function updateNotifyUI(){
+ const permissionOk=('Notification'in window)&&Notification.permission==='granted';
+ const on=permissionOk&&state.notificationsEnabled;
+ $('#notifyDot').classList.toggle('on',on);
+ $('#notifyText').textContent=on?'通知已開啟':'提醒已關閉';
+ $('#enableNotify').textContent=on?'測試通知':'開啟';
+ $('#disableNotify').style.display=on?'block':'none';
+}
+async function enableNotifications(){
+ if(!('Notification'in window)){toast('這個瀏覽器不支援系統通知');return}
+ if(Notification.permission!=='granted'){
+   const p=await Notification.requestPermission();
+   if(p!=='granted'){toast('沒有取得通知權限');updateNotifyUI();return}
+ }
+ if(state.notificationsEnabled){
+   await notify('💧 測試通知','這是一則喝水提醒測試通知。');
+   return;
+ }
+ state.notificationsEnabled=true; save(); updateNotifyUI();
+ await notify('喝水提醒已開啟','之後喝水時間到時會用系統通知提醒你。');
+}
+function disableNotifications(){
+ state.notificationsEnabled=false;
+ state.nextAt=null;
+ save(); updateNotifyUI(); updateTimer();
+ toast('喝水提醒已關閉');
+}
 $$('.amount').forEach(b=>b.onclick=()=>{state.selectedMl=Number(b.dataset.ml);$('#otherMl').value='';save();render()});
 $('#useOther').onclick=()=>{const v=Number($('#otherMl').value);if(v>0&&v<=3000){state.selectedMl=v;save();render();toast(`已選擇 ${v} ml`)}else toast('請輸入 1～3000 ml')};
 $('#drinkBtn').onclick=()=>addDrink(state.selectedMl);
-$('#interval').onchange=e=>{state.interval=Number(e.target.value);resetNext();save();render()};
-$('#enableNotify').onclick=enableNotifications;$('#testSound').onclick=()=>{playDing();toast('正在播放真實叮咚聲')};
+$('#interval').onchange=e=>{
+ const custom=e.target.value==='custom';
+ $('#customIntervalRow').style.display=custom?'flex':'none';
+ if(!custom){state.interval=Number(e.target.value);resetNext();save();render()}
+};
+$('#useCustomInterval').onclick=()=>{
+ const v=Number($('#customInterval').value);
+ if(v>=1&&v<=720){
+   state.interval=v; resetNext(); save(); render();
+   $('#customIntervalRow').style.display='none';
+   toast(`提醒間隔已設為 ${v} 分鐘`);
+ }else toast('請輸入 1～720 分鐘');
+};
+$('#enableNotify').onclick=enableNotifications;
+$('#disableNotify').onclick=disableNotifications;
+$('#testSound').onclick=()=>{playDing();toast('正在播放真實叮咚聲')};
 $('#sleepNow').onchange=e=>{state.sleepNow=e.target.checked;if(!state.sleepNow&&isScheduledSleep()===false)resetNext();save();render()};
 $('#sleepSchedule').onchange=e=>{state.sleepSchedule=e.target.checked;save();render()};
 $('#sleepStart').onchange=e=>{state.sleepStart=e.target.value;save();render()};$('#wakeTime').onchange=e=>{state.wakeTime=e.target.value;save();render()};
