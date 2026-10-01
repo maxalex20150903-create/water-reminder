@@ -34,6 +34,17 @@ body{min-height:100vh;display:flex;justify-content:center}
 .install{margin:16px 0 0;background:linear-gradient(145deg,#183c57,#275b78);color:white}.install .sub{color:#c8d9e4}.install button{background:white;color:#183c57;box-shadow:none}.fine{font-size:10px;color:#7a90a0;line-height:1.5;margin-top:12px;text-align:center}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(30px);background:#143a53;color:white;padding:11px 15px;border-radius:14px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:90%;text-align:center}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @media(min-width:481px){body:before{content:"手機版預覽";position:fixed;top:10px;left:50%;transform:translateX(-50%);font-size:11px;color:#789;z-index:9}}
+
+.achievementOverlay{position:fixed;inset:0;background:rgba(18,48,72,.36);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:9999;padding:22px}
+.achievementOverlay.show{display:flex;animation:fadeIn .22s ease}
+.achievementCard{width:min(88vw,360px);background:#fff;border-radius:28px;padding:28px 22px 22px;text-align:center;box-shadow:0 24px 60px rgba(22,71,105,.28);animation:popUp .32s cubic-bezier(.2,.9,.2,1.15)}
+.achievementIcon{width:108px;height:108px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;font-size:58px;background:linear-gradient(145deg,#eaf8ff,#ffffff);box-shadow:0 10px 28px rgba(45,155,220,.18)}
+.achievementTitle{font-size:25px;font-weight:900;margin:4px 0 8px;color:var(--ink)}
+.achievementText{font-size:15px;line-height:1.55;color:var(--muted);font-weight:700}
+.achievementClose{margin-top:18px;width:100%;border:0;border-radius:16px;padding:14px 16px;background:linear-gradient(145deg,#39acec,#208fd3);color:#fff;font-size:16px;font-weight:900}
+@keyframes popUp{from{transform:scale(.78) translateY(18px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
 </style>
 </head>
 <body>
@@ -49,6 +60,27 @@ body{min-height:100vh;display:flex;justify-content:center}
       <div class="ring" id="ring"><div class="mascot"><div class="face"><div class="dropShape"></div><div class="eyes"><i></i><i></i></div><div class="mouth"></div></div><div class="pct" id="pct">0%</div></div></div>
       <div class="stats"><div><span class="big" id="total">0</span><span class="unit">ml</span></div><div class="goal">今日目標 <b id="goalText">2000</b> ml</div><div class="encourage" id="encourage">💧 今天也要記得補充水分喔！</div></div>
     </div>
+  </section>
+
+  <section class="card">
+    <h2>🎯 每日喝水目標</h2>
+    <div class="setting">
+      <div>
+        <label>今天的目標</label>
+        <div class="hint">可依自己的需求調整</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;min-width:145px">
+        <input class="input" id="goalInput" type="number" min="100" max="10000" step="100" inputmode="numeric" value="2000" style="text-align:right;padding:10px 11px">
+        <span style="font-size:13px;color:var(--muted);font-weight:800">ml</span>
+      </div>
+    </div>
+    <div class="amounts" style="margin-top:10px">
+      <button class="amount goalPreset" data-goal="1500">1500</button>
+      <button class="amount goalPreset active" data-goal="2000">2000</button>
+      <button class="amount goalPreset" data-goal="2500">2500</button>
+      <button class="amount goalPreset" data-goal="3000">3000</button>
+    </div>
+    <button class="primary" id="saveGoal">儲存目標</button>
   </section>
 
   <section class="card">
@@ -87,13 +119,23 @@ body{min-height:100vh;display:flex;justify-content:center}
   </section>
   <div class="fine">提示：iPhone 要「加入主畫面」後，才支援 Web Push 通知權限。</div>
 </main>
+
+<div class="achievementOverlay" id="achievementOverlay" role="dialog" aria-modal="true">
+  <div class="achievementCard">
+    <div class="achievementIcon" id="achievementIcon">😊</div>
+    <div class="achievementTitle" id="achievementTitle">做得很好！</div>
+    <div class="achievementText" id="achievementText">今天的喝水進度又前進了一步。</div>
+    <button class="achievementClose" id="achievementClose">繼續喝水</button>
+  </div>
+</div>
+
 <audio id="dingdong" preload="auto" src="https://upload.wikimedia.org/wikipedia/commons/f/f5/Doorbell-classic-dingdong.ogg"></audio>
 <div class="toast" id="toast"></div>
 <script>
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const KEY='water-mobile-v5';
-const defaults={goal:2000,records:[],selectedMl:200,interval:60,nextAt:null,notificationsEnabled:false,sleepNow:false,sleepSchedule:true,sleepStart:'23:00',wakeTime:'07:00'};
-let state={...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')};
+const defaults={goal:2000,records:[],selectedMl:200,interval:60,nextAt:null,notificationsEnabled:false,sleepNow:false,sleepSchedule:true,sleepStart:'23:00',wakeTime:'07:00',shownMilestones:[]};
+let state={...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}; if(!state.goal) state.goal=2000; if(!Array.isArray(state.shownMilestones)) state.shownMilestones=[];
 let deferredPrompt=null,lastSleep=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2300)}
@@ -103,8 +145,28 @@ function minutes(t){const [h,m]=t.split(':').map(Number);return h*60+m}
 function isScheduledSleep(){if(!state.sleepSchedule)return false;const n=new Date(),c=n.getHours()*60+n.getMinutes(),a=minutes(state.sleepStart),b=minutes(state.wakeTime);if(a===b)return true;return a<b?(c>=a&&c<b):(c>=a||c<b)}
 function isSleeping(){return state.sleepNow||isScheduledSleep()}
 function encouragement(p){if(p>=100)return '🎉 今日目標完成！做得很好，接下來照身體需求補充即可。';if(p>=80)return '😄 快完成了！今天只差一點點。';if(p>=50)return '😊 已經超過一半，保持這個節奏。';if(p>=25)return '🙂 很好的開始，記得稍後再補充水分。';return '💧 今天也要記得補充水分喔！'}
+
+function showAchievement(p){
+ const steps=[
+  {n:25,icon:'💧',title:'很好，開始累積了！',text:'你已經完成今天目標的四分之一，繼續保持這個節奏。'},
+  {n:50,icon:'😊',title:'完成一半了！',text:'今天已經走到一半，記得接下來也持續補充水分。'},
+  {n:80,icon:'😄',title:'快完成了！',text:'只差一點點就達標，再補充一些水就完成今天的目標。'},
+  {n:100,icon:'🎉',title:'今天目標達成！',text:'太棒了！今天的喝水目標完成了。'}
+ ];
+ const hit=[...steps].reverse().find(s=>p>=s.n && !state.shownMilestones.includes(s.n));
+ if(!hit)return;
+ state.shownMilestones.push(hit.n); save();
+ $('#achievementIcon').textContent=hit.icon;
+ $('#achievementTitle').textContent=hit.title;
+ $('#achievementText').textContent=hit.text;
+ $('#achievementOverlay').classList.add('show');
+}
+function closeAchievement(){ $('#achievementOverlay').classList.remove('show'); }
+
 function render(){
  const presets=[15,30,45,60,90,120];
+ if($('#goalInput')) $('#goalInput').value=state.goal;
+ $$('.goalPreset').forEach(b=>b.classList.toggle('active',Number(b.dataset.goal)===Number(state.goal)));
  if($('#interval')){
    $('#interval').value=presets.includes(Number(state.interval))?String(state.interval):'custom';
    $('#customIntervalRow').style.display=presets.includes(Number(state.interval))?'none':'flex';
@@ -118,7 +180,7 @@ function render(){
  const h=$('#history');h.innerHTML='';if(!state.records.length)h.innerHTML='<li><span>今天還沒有紀錄</span><span>💧</span></li>';else [...state.records].reverse().slice(0,12).forEach(r=>{const li=document.createElement('li');li.innerHTML=`<span>${r.time}</span><strong>+ ${r.ml} ml</strong>`;h.appendChild(li)});
  updateNotifyUI();updateTimer();
 }
-function addDrink(ml){ml=Number(ml);if(!ml||ml<1||ml>3000){toast('請輸入 1～3000 ml');return}const d=new Date();state.records.push({ml,time:d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false})});state.selectedMl=ml;state.nextAt=Date.now()+state.interval*60000;save();render();toast(`已記錄 ${ml} ml 💧`)}
+function addDrink(ml){ml=Number(ml);if(!ml||ml<1||ml>3000){toast('請輸入 1～3000 ml');return}const d=new Date();state.records.push({ml,time:d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false})});state.selectedMl=ml;state.nextAt=Date.now()+state.interval*60000;save();render();showAchievement(Math.min(100,Math.round((total()/state.goal)*100)||0));toast(`已記錄 ${ml} ml 💧`)}
 function resetNext(){state.nextAt=Date.now()+state.interval*60000;save();updateTimer()}
 async function notify(title,body){
  try{if('serviceWorker'in navigator){const reg=await navigator.serviceWorker.ready;await reg.showNotification(title,{body,icon:'icon-192.png',badge:'icon-192.png',tag:'water-reminder',renotify:true});}else if(Notification.permission==='granted'){new Notification(title,{body});}}catch(e){console.warn(e)}
@@ -158,7 +220,26 @@ function disableNotifications(){
  save(); updateNotifyUI(); updateTimer();
  toast('喝水提醒已關閉');
 }
-$$('.amount').forEach(b=>b.onclick=()=>{state.selectedMl=Number(b.dataset.ml);$('#otherMl').value='';save();render()});
+$$('.goalPreset').forEach(b=>b.onclick=()=>{
+ state.goal=Number(b.dataset.goal);
+ state.shownMilestones=[];
+ $('#goalInput').value=state.goal;
+ save(); render(); toast(`每日目標已改為 ${state.goal} ml`);
+});
+$('#saveGoal').onclick=()=>{
+ const v=Number($('#goalInput').value);
+ if(v>=100&&v<=10000){
+   state.goal=v;
+   state.shownMilestones=[];
+   save(); render();
+   toast(`每日目標已改為 ${v} ml`);
+ }else{
+   toast('目標請輸入 100～10000 ml');
+ }
+};
+$('#achievementClose').onclick=closeAchievement;
+$('#achievementOverlay').onclick=e=>{if(e.target.id==='achievementOverlay')closeAchievement()};
+$$('#amounts .amount').forEach(b=>b.onclick=()=>{state.selectedMl=Number(b.dataset.ml);$('#otherMl').value='';save();render()});
 $('#useOther').onclick=()=>{const v=Number($('#otherMl').value);if(v>0&&v<=3000){state.selectedMl=v;save();render();toast(`已選擇 ${v} ml`)}else toast('請輸入 1～3000 ml')};
 $('#drinkBtn').onclick=()=>addDrink(state.selectedMl);
 $('#interval').onchange=e=>{

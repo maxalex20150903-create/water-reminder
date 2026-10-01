@@ -1,15 +1,21 @@
 {
-  "name":"喝水提醒",
-  "short_name":"喝水提醒",
-  "id":"./",
-  "start_url":"./",
-  "scope":"./",
-  "display":"standalone",
-  "background_color":"#eef8fd",
-  "theme_color":"#eaf7ff",
-  "description":"記錄喝水、定時提醒與睡眠模式。",
-  "icons":[
-    {"src":"icon-192.png","sizes":"192x192","type":"image/png"},
-    {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
+  "name": "喝水提醒",
+  "short_name": "喝水提醒",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef8fd",
+  "theme_color": "#eaf7ff",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }
