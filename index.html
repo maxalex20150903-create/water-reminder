@@ -66,6 +66,13 @@ body{min-height:100vh;display:flex;justify-content:center}
 .prefGroupTitle{font-size:12px;font-weight:900;color:#8296a5;margin:3px 4px 8px;text-transform:uppercase;letter-spacing:.6px}
 .install.hidden{display:none}
 
+
+.bottleBox{margin-top:12px;padding:13px;border-radius:17px;background:linear-gradient(145deg,#f3fbff,#fbfeff);border:1px solid #e1f0f7}
+.bottleHead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}
+.bottleHead b{font-size:14px}.bottleHead span{font-size:12px;color:var(--muted);font-weight:800}
+.bottleRow{display:grid;grid-template-columns:1fr 96px;gap:9px}
+.bottleResult{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;font-weight:700}
+
 </style>
 </head>
 <body>
@@ -94,6 +101,17 @@ body{min-height:100vh;display:flex;justify-content:center}
     </div>
     <div class="otherRow"><input class="input" id="otherMl" type="number" min="1" max="3000" inputmode="numeric" placeholder="其他水量（ml）"><button class="ghost" id="useOther">使用</button></div>
     <button class="primary" id="drinkBtn">＋ 記錄 200 ml</button>
+    <div class="bottleBox">
+      <div class="bottleHead">
+        <b>🫗 用水壺記錄</b>
+        <span id="bottleSizeLabel">目前水壺：500 ml</span>
+      </div>
+      <div class="bottleRow">
+        <input class="input" id="bottleCount" type="number" min="0.1" max="20" step="0.5" inputmode="decimal" placeholder="喝了幾壺？例如 1.5">
+        <button class="ghost" id="addBottle">記錄</button>
+      </div>
+      <div class="bottleResult" id="bottlePreview">1 壺 = 500 ml</div>
+    </div>
   </section>
 <section class="card">
     <h2>今日紀錄</h2><ul class="history" id="history"><li><span>今天還沒有紀錄</span><span>💧</span></li></ul>
@@ -119,7 +137,23 @@ body{min-height:100vh;display:flex;justify-content:center}
     <div class="sleepTimes"><div class="timeBox"><small>睡覺時間</small><input id="sleepStart" type="time" value="23:00"></div><div class="timeBox"><small>起床時間</small><input id="wakeTime" type="time" value="07:00"></div></div>
     <div class="centerNote" id="sleepState" style="margin-top:10px">目前：提醒正常</div>
   </section>
-  <div class="prefGroupTitle">每日目標</div>
+  <div class="prefGroupTitle">常用水壺</div>
+  <section class="card">
+    <h2>🫗 水壺容量</h2>
+    <div class="hint" style="margin-bottom:10px">設定你平常使用的水壺大小，記錄時就能直接輸入喝了幾壺。</div>
+    <div class="amounts">
+      <button class="amount bottlePreset" data-bottle="350">350</button>
+      <button class="amount bottlePreset active" data-bottle="500">500</button>
+      <button class="amount bottlePreset" data-bottle="750">750</button>
+      <button class="amount bottlePreset" data-bottle="1000">1000</button>
+    </div>
+    <div class="otherRow">
+      <input class="input" id="bottleSizeInput" type="number" min="100" max="5000" step="50" inputmode="numeric" placeholder="自訂水壺容量（ml）">
+      <button class="ghost" id="saveBottleSize">儲存</button>
+    </div>
+  </section>
+
+<div class="prefGroupTitle">每日目標</div>
 <section class="card">
     <h2>🎯 每日喝水目標</h2>
     <div class="setting">
@@ -161,13 +195,37 @@ body{min-height:100vh;display:flex;justify-content:center}
 <div class="toast" id="toast"></div>
 <script>
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
-const KEY='water-mobile-v7';
-const OLD_KEY='water-mobile-v5';
-const defaults={goal:2000,records:[],selectedMl:200,interval:60,nextAt:null,notificationsEnabled:false,sleepNow:false,sleepSchedule:true,sleepStart:'23:00',wakeTime:'07:00',shownMilestones:[]};
+const KEY='water-mobile-v9';
+const OLD_KEY='water-mobile-v8';
+const defaults={goal:2000,records:[],selectedMl:200,interval:60,nextAt:null,notificationsEnabled:false,sleepNow:false,sleepSchedule:true,sleepStart:'23:00',wakeTime:'07:00',shownMilestones:[],currentDate:'',bottleSize:500};
 let saved=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY)||'{}');
-let state={...defaults,...saved}; if(!state.goal) state.goal=2000; if(!Array.isArray(state.shownMilestones)) state.shownMilestones=[];
+let state={...defaults,...saved}; if(!state.bottleSize) state.bottleSize=500; if(!state.goal) state.goal=2000; if(!Array.isArray(state.shownMilestones)) state.shownMilestones=[];
 let deferredPrompt=null,lastSleep=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function dateKey(d=new Date()){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function checkDailyReset(showMessage=false){
+  const today=dateKey();
+  if(!state.currentDate){
+    state.currentDate=today;
+    save();
+    return false;
+  }
+  if(state.currentDate!==today){
+    state.currentDate=today;
+    state.records=[];
+    state.shownMilestones=[];
+    state.nextAt=null;
+    save();
+    if(showMessage) toast('新的一天開始了，今日喝水紀錄已重新歸零 💧');
+    return true;
+  }
+  return false;
+}
 function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2300)}
 function total(){return state.records.reduce((s,r)=>s+Number(r.ml||0),0)}
 function clock(){const d=new Date();$('#clock').textContent=d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false});$('#date').textContent=d.toLocaleDateString('zh-TW',{month:'short',day:'numeric',weekday:'short'});}
@@ -199,7 +257,36 @@ function closeAchievement(){ $('#achievementOverlay').classList.remove('show'); 
 function render(){
  const presets=[15,30,45,60,90,120];
  if($('#goalInput')) $('#goalInput').value=state.goal;
- $$('.goalPreset').forEach(b=>b.classList.toggle('active',Number(b.dataset.goal)===Number(state.goal)));
+ if($('#bottleSizeLabel')) $('#bottleSizeLabel').textContent=`目前水壺：${state.bottleSize} ml`;
+ if($('#bottlePreview')) $('#bottlePreview').textContent=`1 壺 = ${state.bottleSize} ml`;
+ if($('#bottleSizeInput')) $('#bottleSizeInput').value=state.bottleSize;
+ $$('.bottlePreset').forEach(b=>b.classList.toggle('active',Number(b.dataset.bottle)===Number(state.bottleSize)));
+ $$('.bottlePreset').forEach(b=>b.onclick=()=>{
+ state.bottleSize=Number(b.dataset.bottle);
+ save(); render();
+ toast(`水壺容量已設為 ${state.bottleSize} ml`);
+});
+$('#saveBottleSize').onclick=()=>{
+ const v=Number($('#bottleSizeInput').value);
+ if(v>=100&&v<=5000){
+   state.bottleSize=v;
+   save(); render();
+   toast(`水壺容量已設為 ${v} ml`);
+ }else toast('請輸入 100～5000 ml');
+};
+$('#addBottle').onclick=()=>{
+ const count=Number($('#bottleCount').value);
+ addBottleDrink(count);
+ if(count>0) $('#bottleCount').value='';
+};
+$('#bottleCount').oninput=e=>{
+ const count=Number(e.target.value);
+ $('#bottlePreview').textContent=count>0
+   ? `${count} 壺 = ${Math.round(count*state.bottleSize)} ml`
+   : `1 壺 = ${state.bottleSize} ml`;
+};
+
+$$('.goalPreset').forEach(b=>b.classList.toggle('active',Number(b.dataset.goal)===Number(state.goal)));
  if($('#interval')){
    $('#interval').value=presets.includes(Number(state.interval))?String(state.interval):'custom';
    $('#customIntervalRow').style.display=presets.includes(Number(state.interval))?'none':'flex';
@@ -217,7 +304,7 @@ function render(){
  }else{
    [...state.records].map((r,i)=>({...r,_index:i})).reverse().slice(0,12).forEach(r=>{
      const li=document.createElement('li');
-     li.innerHTML=`<div class="recordMain"><span>${r.time}</span><strong>+ ${r.ml} ml</strong></div><button class="deleteRecord" data-index="${r._index}">刪除</button>`;
+     li.innerHTML=`<div class="recordMain"><span>${r.time}</span><div style="text-align:right"><strong>+ ${r.ml} ml</strong>${r.note?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${r.note}</div>`:''}</div></div><button class="deleteRecord" data-index="${r._index}">刪除</button>`;
      h.appendChild(li);
    });
    $$('.deleteRecord').forEach(btn=>btn.onclick=()=>{
@@ -233,7 +320,25 @@ function render(){
  }
  updateNotifyUI();updateTimer();
 }
-function addDrink(ml){ml=Number(ml);if(!ml||ml<1||ml>3000){toast('請輸入 1～3000 ml');return}const d=new Date();state.records.push({ml,time:d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false})});state.selectedMl=ml;state.nextAt=Date.now()+state.interval*60000;save();render();showAchievement(Math.round((total()/state.goal)*100)||0);toast(`已記錄 ${ml} ml 💧`)}
+function addBottleDrink(count){
+ checkDailyReset(false);
+ count=Number(count);
+ if(!count||count<=0||count>20){toast('請輸入 0.1～20 壺');return}
+ const ml=Math.round(count*Number(state.bottleSize));
+ const d=new Date();
+ state.records.push({
+   ml,
+   time:d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}),
+   note:`${count} 壺 × ${state.bottleSize} ml`
+ });
+ state.nextAt=Date.now()+state.interval*60000;
+ save();
+ render();
+ showAchievement(Math.round((total()/state.goal)*100)||0);
+ toast(`已記錄 ${count} 壺，共 ${ml} ml 🫗`);
+}
+
+function addDrink(ml){checkDailyReset(false);ml=Number(ml);if(!ml||ml<1||ml>3000){toast('請輸入 1～3000 ml');return}const d=new Date();state.records.push({ml,time:d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false})});state.selectedMl=ml;state.nextAt=Date.now()+state.interval*60000;save();render();showAchievement(Math.round((total()/state.goal)*100)||0);toast(`已記錄 ${ml} ml 💧`)}
 function resetNext(){state.nextAt=Date.now()+state.interval*60000;save();updateTimer()}
 async function notify(title,body){
  try{if('serviceWorker'in navigator){const reg=await navigator.serviceWorker.ready;await reg.showNotification(title,{body,icon:'icon-192.png',badge:'icon-192.png',tag:'water-reminder',renotify:true});}else if(Notification.permission==='granted'){new Notification(title,{body});}}catch(e){console.warn(e)}
@@ -337,7 +442,18 @@ updateInstallVisibility();
 window.matchMedia('(display-mode: standalone)').addEventListener?.('change',updateInstallVisibility);
 
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(console.warn);
-clock();render();setInterval(()=>{clock();const sl=isSleeping();if(lastSleep&&!sl)resetNext();lastSleep=sl;updateTimer();},1000);
+checkDailyReset(false);
+clock();
+render();
+setInterval(()=>{
+  clock();
+  const changedDay=checkDailyReset(true);
+  if(changedDay) render();
+  const sl=isSleeping();
+  if(lastSleep&&!sl) resetNext();
+  lastSleep=sl;
+  updateTimer();
+},1000);
 </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE='water-reminder-v7';
+const CACHE='water-reminder-v9';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>{
